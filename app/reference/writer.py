@@ -1125,20 +1125,23 @@ def build_disclosure(
     return "\n\n".join(paragraphs)
 
 
-def _sources(
-    lecture_numbers: list[int],
-    materials: list[db.Material],
-    analyses: list[LectureAnalysis],
-    engine_calls: int,
-    split: bool,
-    font_size: int,
-    notes: list[str] = (),
-) -> list[str]:
+def build_short_disclosure() -> str:
+    """One-line ИИ-сервис item for «СПИСОК ИСТОЧНИКОВ»: the assignment asks
+    which service and prompt were used, so the service is always named in the
+    document itself, while the full technical description goes to the
+    companion file written by :func:`_write_disclosure`."""
+    return (
+        f"Использованный ИИ-сервис: {_current_engine_description()}; применялся для подготовки "
+        "черновика текста по расшифровкам видеолекций."
+    )
+
+
+def _sources(lecture_numbers: list[int], materials: list[db.Material]) -> list[str]:
     city, year = _city_and_year()
     sources = _video_sources(materials) or [
         f"Видеолекция №{n} курса «{config.REFERENCE_DISCIPLINE}», {year or city}." for n in lecture_numbers
     ]
-    sources.append(build_disclosure(analyses, engine_calls, split, font_size, notes))
+    sources.append(build_short_disclosure())
     return sources
 
 
@@ -1209,9 +1212,7 @@ def _write_reference_document(
         content = ReferenceContent(
             title_page=title_info,
             sections=[(f"{n} {s.question}", s.answer) for n, s in enumerate(ordered, start=1)],
-            sources=_sources(
-                [lecture.lecture_number], materials, [analysis], generate_fn.calls, split, rules.font_size, [notes]
-            ),
+            sources=_sources([lecture.lecture_number], materials),
         )
         answered = LectureQuestions(
             lecture_number=lecture.lecture_number, topic=lecture.topic, questions=[s.question for s in ordered]
@@ -1263,6 +1264,7 @@ def _write_reference_document(
             section.answer = longer
             report = rebuild()
     _write_trace(output_path, trace, report)
+    _write_disclosure(output_path, [analysis], generate_fn.calls, split, rules.font_size, [notes])
     return output_path, report
 
 
@@ -1277,6 +1279,34 @@ def _write_trace(output_path: Path, trace: list[str], report: Optional[CheckRepo
         output_path.with_name(f"{output_path.stem}.trace.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
     except OSError:
         log.exception("Trace for %s could not be written", output_path.name)
+
+
+def _write_disclosure(
+    output_path: Path,
+    analyses: list[LectureAnalysis],
+    engine_calls: int,
+    split: bool,
+    font_size: int,
+    notes: list[str],
+) -> None:
+    """Companion note next to the документ: the full cycle of the service with
+    every prompt. It is deliberately kept out of the реферат itself — the
+    student decides how to hand it in — but it is always written, so the
+    question «какой сервис и какой промт» can be answered honestly."""
+    try:
+        text = build_disclosure(analyses, engine_calls, split, font_size, notes)
+    except Exception:
+        log.exception("Disclosure for %s could not be built", output_path.name)
+        return
+    header = (
+        "Как подготовлен этот реферат (сопроводительная записка для преподавателя).\n"
+        "В самом реферате в списке источников указан только используемый ИИ-сервис; "
+        "здесь описан полный цикл работы программы и приведены все промты.\n\n"
+    )
+    try:
+        output_path.with_name(f"{output_path.stem}.ИИ-сервис.txt").write_text(header + text + "\n", encoding="utf-8")
+    except OSError:
+        log.exception("Disclosure for %s could not be written", output_path.name)
 
 
 def _validate_material_and_lecture(material_id: str) -> tuple[db.Material, LectureQuestions]:
@@ -1551,10 +1581,7 @@ def generate_combined_reference(
     content = ReferenceContent(
         title_page=title_info,
         sections=sections,
-        sources=_sources(
-            lecture_numbers, materials, analyses, counter.calls, False, rules.font_size,
-            [_combined_notes(lecture_by_number[n].notes) for n in lecture_numbers],
-        ),
+        sources=_sources(lecture_numbers, materials),
     )
     combined_lecture = LectureQuestions(
         lecture_number="-".join(str(n) for n in lecture_numbers),  # type: ignore[arg-type]
@@ -1563,5 +1590,9 @@ def generate_combined_reference(
     )
     report = _build_documents(output_path, content, rules, filename, combined_lecture)
     _write_trace(output_path, trace, report)
+    _write_disclosure(
+        output_path, analyses, counter.calls, False, rules.font_size,
+        [_combined_notes(lecture_by_number[n].notes) for n in lecture_numbers],
+    )
     notify("Готово", 100)
     return output_path, report

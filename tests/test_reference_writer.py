@@ -242,5 +242,11 @@ def test_generate_reference_includes_ai_disclosure_in_sources():
     from pypdf import PdfReader
 
     text = "\n".join(p.extract_text() or "" for p in PdfReader(str(output_path)).pages)
+    # The документ names the service in one line; the full cycle with every
+    # prompt goes to the companion note the student hands in separately.
     assert "ИИ-сервис" in text
-    assert "Промт" in text or "промт" in text
+    assert "Этап 1" not in text
+
+    note = output_path.with_name(f"{output_path.stem}.ИИ-сервис.txt").read_text(encoding="utf-8")
+    assert "ИИ-сервис" in note
+    assert "Промт" in note or "промт" in note
