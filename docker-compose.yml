@@ -1,0 +1,89 @@
+services:
+  transcriber:
+    build:
+      context: .
+      # These args bake the model weights into the image at build time
+      # (see Dockerfile). Keep them equal to the environment below —
+      # mismatched values would make the container try to download a
+      # different model at startup instead of using the cached one.
+      #
+      # "small" is the sweet spot for a multi-user deployment on 8GB RAM:
+      # the model is loaded once and shared by all worker threads (it is
+      # NOT duplicated per concurrent job), so this tuning leaves plenty of
+      # headroom for several people transcribing at the same time. See the
+      # "Многопользовательский режим" section in README.md for other sizes.
+      args:
+        WHISPER_MODEL_SIZE: small
+        WHISPER_DEVICE: cpu
+        WHISPER_COMPUTE_TYPE: int8
+        # The реферат-writing LLM, baked in the same way. Qwen2.5-3B at
+        # Q4_K_M is a reasonable default for 8GB RAM (~2-2.5GB resident);
+        # bump to the 7B variant for noticeably better writing quality if
+        # you have more RAM to spare.
+        LLM_MODEL_REPO: Qwen/Qwen2.5-3B-Instruct-GGUF
+        LLM_MODEL_FILE: qwen2.5-3b-instruct-q4_k_m.gguf
+    ports:
+      - "8000:8000"
+    volumes:
+      - transcriber-data:/data
+      # Point this at a folder synced by the Google Drive / Yandex.Disk
+      # desktop client (or anything else that drops files on disk) to use
+      # the zero-setup ingestion source. See "Автоматический приём
+      # материалов от преподавателя" in README.md.
+      - ./watch:/data/watch
+      # Finished lectures («Следующая лекция»): videos, transcripts and
+      # рефераты per lecture, kept on the host so they are never lost with
+      # the container.
+      - ./archive:/data/archive
+    environment:
+      - WHISPER_MODEL_SIZE=small
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
+      - LLM_MODEL_REPO=Qwen/Qwen2.5-3B-Instruct-GGUF
+      - LLM_MODEL_FILE=qwen2.5-3b-instruct-q4_k_m.gguf
+      # --- Реферат title page: values come from .env next to this file
+      # (copy .env.example to .env and fill it in). Empty = placeholder. ---
+      - REFERENCE_UNIVERSITY_HEADER=${REFERENCE_UNIVERSITY_HEADER:-}
+      - REFERENCE_DEPARTMENT=${REFERENCE_DEPARTMENT:-}
+      - REFERENCE_TEACHER_POSITION=${REFERENCE_TEACHER_POSITION:-}
+      - REFERENCE_TEACHER_NAME=${REFERENCE_TEACHER_NAME:-}
+      - REFERENCE_DISCIPLINE=${REFERENCE_DISCIPLINE:-}
+      - REFERENCE_CITY=${REFERENCE_CITY:-}
+      - STUDENT_NAME=${STUDENT_NAME:-}
+      - STUDENT_GROUP=${STUDENT_GROUP:-}
+      # 2 concurrent transcriptions at once; 6 total queued/running before
+      # new uploads get a 503 instead of piling up unbounded.
+      - MAX_WORKERS=2
+      - MAX_QUEUE_SIZE=6
+      - JOB_TTL_SECONDS=3600
+      # --- Automatic ingestion pipeline ---
+      - SYNC_INTERVAL_SECONDS=300
+      - LOCAL_WATCH_DIR=/data/watch
+      - ARCHIVE_DIR=/data/archive
+      # Pasting a Google Drive folder link (shared "Anyone with the link")
+      # into the web UI works out of the box with NO configuration here —
+      # it's read anonymously, like an incognito browser tab (see
+      # app/sources/google_drive_public.py). Only set this if you also want
+      # the more robust, official API-based method (handles native Google
+      # Docs/Sheets/Slides too; needs a free API key, see
+      # app/sources/google_drive_link.py) — when set, it's used for every
+      # pasted link instead of the anonymous method.
+      - GOOGLE_DRIVE_API_KEY=${GOOGLE_DRIVE_API_KEY:-}
+      # Uncomment and fill in to also pull straight from Yandex.Disk:
+      # - YANDEX_DISK_TOKEN=your-oauth-token
+      # - YANDEX_DISK_REMOTE_PATH=/Уроки
+      # Uncomment and mount a service-account key to also pull one fixed
+      # Google Drive folder (see app/sources/google_drive.py for setup):
+      # - GOOGLE_DRIVE_CREDENTIALS_FILE=/data/google-credentials.json
+      # - GOOGLE_DRIVE_FOLDER_ID=your-folder-id
+    # Hard memory ceiling so the container can never push an 8GB host into
+    # swapping/OOM. Each model (Whisper "small" + Qwen2.5-3B) loads once and
+    # stays resident regardless of concurrency (~1.5GB + ~2.5GB), plus
+    # Python/uvicorn/ffmpeg overhead — raised from 6g to 7g to fit both
+    # models comfortably; on an 8GB host that leaves only ~1GB for
+    # everything else, so drop WHISPER_MODEL_SIZE to "base" and/or lower
+    # mem_limit back down if the machine also runs other things.
+    mem_limit: 7g
+
+volumes:
+  transcriber-data:

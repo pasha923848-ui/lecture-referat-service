@@ -1,0 +1,16 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+faster-whisper==1.0.3
+aiofiles==24.1.0
+python-multipart==0.0.9
+pydantic-settings==2.4.0
+
+# Automatic ingestion pipeline (teacher materials from cloud/local sources)
+requests==2.32.3
+pypdf==4.3.1
+python-docx==1.1.2
+google-api-python-client==2.149.0
+google-auth==2.35.0
+gdown==6.2.0
+reportlab==4.2.5
+llama-cpp-python==0.3.35

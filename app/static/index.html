@@ -1,0 +1,1243 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Материалы курса</title>
+<script>
+  // Applied before the stylesheet paints anything, so a saved "light"
+  // choice doesn't flash dark first. Default is dark when nothing is saved.
+  try {
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  } catch {}
+</script>
+<style>
+  /* Dark by default (regardless of the OS/browser theme setting) — the
+     toggle button lets the student switch to light manually; the choice is
+     remembered in localStorage. */
+  :root {
+    color-scheme: dark;
+    --bg: #0d0d10;
+    --surface: #17171b;
+    --surface-2: #1c1c21;
+    --border: #2a2a31;
+    --text: #f1f1f4;
+    --text-muted: #9797a3;
+    --accent: #818cf8;
+    --accent-hover: #a5b0fb;
+    --accent-contrast: #131320;
+    --accent-soft: #201f3a;
+    --success: #4ade80;
+    --success-soft: #0f2a1a;
+    --warning: #fbbf24;
+    --warning-soft: #2c2007;
+    --danger: #f87171;
+    --danger-soft: #2c1212;
+    --danger-strong: #f87171;
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --radius-sm: 7px;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f6f6f8;
+    --surface: #ffffff;
+    --surface-2: #fbfbfc;
+    --border: #e3e3e8;
+    --text: #17171d;
+    --text-muted: #6b6b78;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-contrast: #ffffff;
+    --accent-soft: #eef1ff;
+    --success: #15803d;
+    --success-soft: #ecfdf3;
+    --warning: #b45309;
+    --warning-soft: #fef6e7;
+    --danger: #b91c1c;
+    --danger-soft: #fef2f2;
+    --danger-strong: #dc2626;
+    --shadow-sm: 0 1px 2px rgba(20, 20, 30, 0.05);
+    --shadow-md: 0 4px 16px rgba(20, 20, 30, 0.07);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.45;
+  }
+  .page {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 5rem;
+  }
+
+  .app-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.35rem; }
+  .app-header .logo {
+    width: 38px; height: 38px; border-radius: var(--radius-md);
+    background: var(--accent); color: var(--accent-contrast);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .app-header h1 { font-size: 1.3rem; margin: 0; letter-spacing: -0.01em; }
+  .app-subtitle { color: var(--text-muted); font-size: 0.9rem; margin: 0 0 2rem 3.1rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 1.25rem 1.4rem;
+    margin-bottom: 1.25rem;
+  }
+  .card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .card-title { display: flex; align-items: center; gap: 0.55rem; font-size: 1rem; font-weight: 600; margin: 0; }
+  .card-title .icon { color: var(--accent); flex-shrink: 0; }
+  .card-desc { color: var(--text-muted); font-size: 0.85rem; margin: -0.6rem 0 1rem; }
+
+  .row { display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center; }
+
+  input[type=text], input[type=number], input[type=file] {
+    font: inherit; color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 0.55rem 0.75rem;
+  }
+  input[type=text]:focus, input[type=number]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  input[type=text] { flex: 1; min-width: 200px; }
+  input[type=number] { width: 4.5rem; text-align: center; }
+
+  button {
+    font: inherit; font-weight: 500; cursor: pointer;
+    border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text);
+    padding: 0.55rem 0.9rem;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    transition: background 0.12s ease, border-color 0.12s ease, transform 0.05s ease;
+  }
+  button:hover:not(:disabled) { background: var(--border); }
+  button:active:not(:disabled) { transform: scale(0.98); }
+  button:disabled { opacity: 0.55; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+  button.ghost { background: transparent; border-color: transparent; color: var(--text-muted); padding: 0.4rem 0.6rem; }
+  button.ghost:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
+  button.small { padding: 0.35rem 0.65rem; font-size: 0.82rem; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em;
+    padding: 0.2rem 0.55rem; border-radius: 999px; white-space: nowrap;
+  }
+  .badge.processing { background: var(--warning-soft); color: var(--warning); }
+  .badge.done, .badge.ok, .badge.true { background: var(--success-soft); color: var(--success); }
+  .badge.error, .badge.false { background: var(--danger-soft); color: var(--danger); }
+  .badge .spinner { width: 10px; height: 10px; }
+
+  .spinner {
+    display: inline-block; width: 13px; height: 13px;
+    border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: 50%; animation: spin 0.7s linear infinite; opacity: 0.7;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-row { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.4rem; }
+  .progress-track {
+    flex: 1; min-width: 80px; height: 6px; border-radius: 999px;
+    background: var(--border); overflow: hidden;
+  }
+  .progress-track .progress-fill {
+    height: 100%; border-radius: 999px; background: var(--accent);
+    transition: width 0.4s ease;
+  }
+  .progress-track.indeterminate .progress-fill {
+    width: 30% !important; animation: progress-slide 1.2s ease-in-out infinite;
+  }
+  @keyframes progress-slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(333%); }
+  }
+  .progress-stage { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+
+  .transcript-preview {
+    margin-top: 0.5rem; padding: 0.6rem 0.75rem; border-radius: var(--radius-sm);
+    background: var(--surface-2); border: 1px dashed var(--border);
+    font-size: 0.83rem; color: var(--text-muted); white-space: pre-wrap; max-height: 9rem; overflow-y: auto;
+  }
+
+  .empty-state {
+    text-align: center; padding: 2rem 1rem; color: var(--text-muted);
+  }
+  .empty-state .icon { color: var(--border); margin-bottom: 0.6rem; }
+  .empty-state p { margin: 0.2rem 0; font-size: 0.9rem; }
+
+  .link-item {
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.65rem 0.1rem; border-top: 1px solid var(--border);
+  }
+  .link-item:first-child { border-top: none; }
+  .link-item .link-icon { color: var(--text-muted); flex-shrink: 0; }
+  .link-item .link-info { flex: 1; min-width: 0; }
+  .link-item .link-title { font-weight: 500; font-size: 0.92rem; }
+  .link-item .link-url { font-size: 0.78rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .material { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem 1.15rem; margin-bottom: 0.85rem; background: var(--surface-2); }
+  .material-header { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.6rem; }
+  .material-title { font-weight: 600; font-size: 0.98rem; display: flex; align-items: center; gap: 0.5rem; }
+
+  .block { border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 0.85rem; background: var(--surface); }
+  .block-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.7rem; }
+  .block-toggle {
+    flex: 1; display: flex; align-items: center; gap: 0.55rem; min-width: 0;
+    background: none; border: none; box-shadow: none; color: var(--text);
+    font: inherit; text-align: left; cursor: pointer; padding: 0.2rem 0.25rem;
+  }
+  .block-toggle:hover:not(:disabled) { background: none; color: var(--accent); }
+  .block-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; }
+  .block-chevron { display: inline-flex; color: var(--text-muted); transition: transform 0.15s ease; }
+  .block-toggle[aria-expanded="true"] .block-chevron { transform: rotate(90deg); }
+  .block-body { padding: 0 0.7rem 0.1rem; }
+  .block-body .material:last-child { margin-bottom: 0.7rem; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.7rem; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.8rem; text-decoration: none; color: var(--text);
+    border: 1px solid var(--border); background: var(--surface);
+    border-radius: 999px; padding: 0.25rem 0.65rem 0.25rem 0.5rem;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip .icon { color: var(--text-muted); flex-shrink: 0; }
+  .chip:hover .icon { color: var(--accent); }
+
+  .lecture-control {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    padding-top: 0.65rem; border-top: 1px dashed var(--border);
+  }
+  .lecture-control label { font-size: 0.85rem; color: var(--text-muted); }
+  .source-tag { font-size: 0.75rem; color: var(--text-muted); }
+
+  .reference-panel { margin-top: 0.6rem; }
+  .issues-list { margin: 0.4rem 0 0; padding-left: 1.1rem; font-size: 0.82rem; color: var(--warning); }
+  .issues-list li { margin-bottom: 0.15rem; }
+
+  .check-report { border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; margin-top: 0.9rem; font-size: 0.88rem; }
+
+  .toast-stack { position: fixed; bottom: 1.2rem; right: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 100; max-width: 320px; }
+  .toast {
+    background: var(--text); color: var(--bg);
+    padding: 0.65rem 0.9rem; border-radius: var(--radius-sm);
+    font-size: 0.85rem; box-shadow: var(--shadow-md);
+    animation: toast-in 0.15s ease;
+  }
+  .toast.error { background: var(--danger-strong); color: white; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(6px); } }
+
+  @media (max-width: 480px) {
+    .page { padding: 1.25rem 0.9rem 4rem; }
+    .card { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="app-header">
+      <span class="logo" id="icon-logo"></span>
+      <h1>Материалы курса</h1>
+      <button class="small ghost" id="theme-toggle-btn" style="margin-left:auto; border:1px solid var(--border);" title="Переключить тему"></button>
+    </div>
+    <p class="app-subtitle">Приём, сортировка, транскрипция и рефераты — полностью локально</p>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Мои данные</h2>
+      </div>
+      <p class="card-desc">ФИО и номер группы для титульного листа реферата и имени PDF-файла.</p>
+      <div class="row">
+        <input type="text" id="student-name-input" placeholder="Иванов И.И.">
+        <input type="text" id="student-group-input" placeholder="2395" style="max-width:8rem;">
+        <button class="primary" id="student-info-save-btn">Сохранить</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title"><span class="icon" id="icon-cpu"></span>GigaChat API</h2>
+        <span class="badge" id="gigachat-status-badge"></span>
+      </div>
+      <p class="card-desc">Ключ авторизации GigaChat (<a href="https://developers.sber.ru/studio" target="_blank" style="color:var(--accent);">developers.sber.ru/studio</a>) — когда указан, рефераты пишет облачный GigaChat-Pro вместо локальной модели: значительно быстрее.</p>
+      <div class="row">
+        <input type="text" id="gigachat-key-input" placeholder="Ключ авторизации">
+        <button class="primary" id="gigachat-save-btn">Сохранить</button>
+        <button class="small ghost" id="gigachat-clear-btn" style="border:1px solid var(--border);">Очистить</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Указания преподавателя</h2>
+      </div>
+      <p class="card-desc">Свободный текст — например, что лекция переведена в дистанционный формат, какие рефераты обязательны, как сопоставлять видео с заданиями. Передаётся GigaChat и при определении номера лекции по видео, и при написании реферата.</p>
+      <textarea id="teacher-notes-input" rows="4" placeholder="Эта лекция переведена в дистанционный формат. Имеются видеофайлы. Необходимо просмотреть видеофайлы и подготовить два реферата согласно Заданиям на основную лекцию и дополнительную..." style="width:100%; font: inherit; color:var(--text); background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.6rem 0.75rem; resize:vertical;"></textarea>
+      <div class="row" style="margin-top:0.6rem;">
+        <button class="primary" id="teacher-notes-save-btn">Сохранить</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title"><span class="icon" id="icon-link"></span>Папки Google Диска</h2>
+      </div>
+      <p class="card-desc">Вставьте ссылку на папку, которой поделился преподаватель — доступ по ссылке, без входа и ключей.</p>
+      <div class="row">
+        <input type="text" id="drive-link-input" placeholder="https://drive.google.com/drive/folders/…">
+        <button class="primary" id="add-link-btn"><span class="icon" id="icon-plus"></span>Добавить</button>
+      </div>
+      <div id="drive-links" style="margin-top: 0.4rem;"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title"><span class="icon" id="icon-folder"></span>Материалы</h2>
+        <div class="row">
+          <button class="small" id="sync-btn"><span class="icon" id="icon-refresh"></span>Синхронизировать</button>
+          <button class="small" id="batch-reference-btn"><span class="icon" id="icon-stack"></span>Рефераты по всем пропущенным</button>
+          <button class="small primary" id="next-lecture-btn" title="Сохранить видео, расшифровки и рефераты текущей лекции в архив и очистить список"><span class="icon" id="icon-archive"></span>Следующая лекция</button>
+        </div>
+      </div>
+      <p class="card-desc" style="margin-top:-0.3rem;">Отметьте несколько лекций галочками, чтобы написать один общий реферат сразу по нескольким видео.</p>
+      <div id="sync-progress"></div>
+      <div id="materials"></div>
+      <div class="row" id="combined-reference-bar" style="display:none; margin-top:0.9rem; padding-top:0.9rem; border-top:1px dashed var(--border);">
+        <span id="combined-reference-count" style="color:var(--text-muted); font-size:0.88rem;"></span>
+        <button class="small" id="combine-block-btn" style="margin-left:auto;" title="Зафиксировать выбранные видео как один сворачиваемый блок">Объединить в блок</button>
+        <button class="small primary" id="combined-reference-btn">Составить общий реферат</button>
+      </div>
+      <div id="combined-reference-result"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title"><span class="icon" id="icon-archive-title"></span>Архив лекций</h2>
+      </div>
+      <p class="card-desc">Кнопка «Следующая лекция» переносит сюда видео, расшифровки и рефераты текущей лекции (на компьютере — папка <code>archive</code> рядом с проектом) и очищает список. Вернуться к лекции можно в любой момент — текущая при этом сама сохранится в архив.</p>
+      <div id="archives"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title"><span class="icon" id="icon-check"></span>Проверить готовый реферат</h2>
+      </div>
+      <p class="card-desc">Загрузите любой PDF (свой или сгенерированный) — сервис сверит его с требованиями из задания.</p>
+      <div class="row">
+        <input type="file" id="check-file-input" accept="application/pdf">
+        <input type="number" id="check-lecture-input" placeholder="№ лекции" min="1">
+        <button class="primary" id="check-btn">Проверить</button>
+      </div>
+      <div id="check-result"></div>
+    </section>
+  </div>
+
+  <div class="toast-stack" id="toast-stack"></div>
+
+  <script>
+    // --- Minimal inline icon set (stroke-based, feather-style) — kept as
+    // plain SVG strings so the page needs no external icon font/CDN.
+    const ICONS = {
+      logo: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+      link: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+      folder: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>',
+      check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>',
+      plus: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+      refresh: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>',
+      stack: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>',
+      trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-.87 14.14A2 2 0 0 1 16.14 22H7.86a2 2 0 0 1-2-1.86L5 6"/></svg>',
+      video: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>',
+      fileText: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6M9 13h6M9 17h6M9 9h1"/></svg>',
+      clipboard: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>',
+      download: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+      alert: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>',
+      inbox: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>',
+      archive: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg>',
+      chevron: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+      undo: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
+      cpu: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>',
+      sun: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+      moon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>',
+    };
+    for (const [name, svg] of Object.entries(ICONS)) {
+      const el = document.getElementById(`icon-${name.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
+      if (el) el.innerHTML = svg;
+    }
+    const icon = (name, cls = '') => `<span class="icon ${cls}">${ICONS[name] || ''}</span>`;
+
+    // Theme toggle — dark by default, "light" persisted in localStorage
+    // (the inline <head> script above applies it immediately on load so
+    // there's no dark-then-light flash for a student who picked light).
+    function applyThemeButtonLabel() {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      const btn = document.getElementById('theme-toggle-btn');
+      btn.innerHTML = isLight ? `${ICONS.moon}Тёмная` : `${ICONS.sun}Светлая`;
+    }
+    document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        try { localStorage.setItem('theme', 'dark'); } catch {}
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        try { localStorage.setItem('theme', 'light'); } catch {}
+      }
+      applyThemeButtonLabel();
+    });
+    applyThemeButtonLabel();
+
+    const KIND_META = {
+      video: { icon: 'video', label: 'видео' },
+      transcript: { icon: 'fileText', label: 'расшифровка' },
+      assignment: { icon: 'clipboard', label: 'ТЗ / оформление' },
+      conspect: { icon: 'fileText', label: 'конспект' },
+      document: { icon: 'fileText', label: 'документ' },
+      other: { icon: 'fileText', label: 'файл' },
+    };
+    const STATUS_LABELS = { processing: 'обрабатывается', done: 'готово', error: 'ошибка', ok: 'ok' };
+
+    function escapeHtml(value) {
+      const div = document.createElement('div');
+      div.textContent = value ?? '';
+      return div.innerHTML;
+    }
+
+    function showToast(message, isError = false) {
+      const stack = document.getElementById('toast-stack');
+      const el = document.createElement('div');
+      el.className = `toast${isError ? ' error' : ''}`;
+      el.textContent = message;
+      stack.appendChild(el);
+      setTimeout(() => el.remove(), 5000);
+    }
+
+    function statusBadge(status) {
+      const spin = status === 'processing' ? `<span class="spinner"></span>` : '';
+      return `<span class="badge ${escapeHtml(status)}">${spin}${STATUS_LABELS[status] || escapeHtml(status)}</span>`;
+    }
+
+    // A progress bar for any long-running step. `percent` (0-100) draws a
+    // filled bar; omitting it (transcription progress isn't known until
+    // faster-whisper reports the audio's total duration, and reference
+    // generation has no meaningful "% done") falls back to an indeterminate
+    // sliding-bar animation so something is still visibly moving.
+    function progressBarHtml(stage, percent) {
+      const hasPercent = typeof percent === 'number' && !Number.isNaN(percent);
+      const track = hasPercent
+        ? `<div class="progress-track"><div class="progress-fill" style="width:${Math.max(0, Math.min(100, percent))}%"></div></div>`
+        : `<div class="progress-track indeterminate"><div class="progress-fill"></div></div>`;
+      const stageText = stage ? escapeHtml(stage) : '';
+      const percentText = hasPercent ? ` ${Math.round(percent)}%` : '';
+      return `
+        <div class="progress-row">
+          ${track}
+          <span class="progress-stage">${stageText}${percentText}</span>
+        </div>
+      `;
+    }
+
+    const referenceJobPollers = new Set();
+    const selectedMaterialIds = new Set();
+
+    function updateCombinedReferenceBar() {
+      const bar = document.getElementById('combined-reference-bar');
+      const count = document.getElementById('combined-reference-count');
+      const btn = document.getElementById('combined-reference-btn');
+      if (selectedMaterialIds.size === 0) {
+        bar.style.display = 'none';
+        return;
+      }
+      bar.style.display = 'flex';
+      count.textContent = `Выбрано лекций: ${selectedMaterialIds.size}`;
+      btn.disabled = selectedMaterialIds.size < 2;
+      document.getElementById('combine-block-btn').disabled = selectedMaterialIds.size < 2;
+    }
+
+    // Blocks are folded by default — the point is to keep past lectures out
+    // of the way; the ones a student opened stay open across page reloads.
+    function getExpandedBlocks() {
+      try {
+        return new Set(JSON.parse(localStorage.getItem('expanded-blocks') || '[]'));
+      } catch {
+        return new Set();
+      }
+    }
+
+    function setBlockExpanded(blockId, expanded) {
+      const ids = getExpandedBlocks();
+      if (expanded) ids.add(blockId); else ids.delete(blockId);
+      try {
+        localStorage.setItem('expanded-blocks', JSON.stringify([...ids]));
+      } catch {}
+    }
+
+    function renderCheckReport(container, report) {
+      const issuesHtml = (report.issues || []).map(i => `<li>${escapeHtml(i)}</li>`).join('');
+      container.innerHTML = `
+        <div class="check-report">
+          <span class="badge ${report.passed}">${report.passed ? icon('check') + ' Соответствует требованиям' : icon('alert', '') + ' Есть замечания'}</span>
+          ${issuesHtml ? `<ul class="issues-list">${issuesHtml}</ul>` : ''}
+        </div>
+      `;
+    }
+
+    // material_id -> last known реферат job id, and (for the combined flow)
+    // a single slot for the last combined job. Kept outside loadMaterials()
+    // because that function fully rebuilds the #materials DOM on every poll
+    // tick (every 6s) — without this, a job started against one render's
+    // .reference-panel node would silently keep updating an now-orphaned,
+    // detached element forever once the next tick replaces it, and the
+    // visible panel would reset to empty even though the реферат finished
+    // successfully on the server.
+    const referenceJobByMaterial = new Map();
+    let combinedReferenceJobId = null;
+
+    // One-shot: fetch a job's current status and render it into `container`
+    // (whichever DOM node is currently showing it). Returns the job status
+    // string, or null on a network error.
+    async function refreshReferenceJobInto(jobId, container) {
+      let job;
+      try {
+        const res = await fetch(`/reference/${jobId}`);
+        if (!res.ok) throw new Error('bad status');
+        job = await res.json();
+      } catch {
+        container.innerHTML = `<span class="badge error">${icon('alert')}не удалось получить статус</span>`;
+        return null;
+      }
+
+      if (job.status === 'processing') {
+        container.innerHTML = `<span class="badge processing"><span class="spinner"></span>пишется реферат…</span>${progressBarHtml(job.stage, job.progress)}`;
+      } else if (job.status === 'error') {
+        container.innerHTML = `<span class="badge error">${icon('alert')}ошибка</span><p style="color:var(--danger); font-size:0.85rem; margin:0.4rem 0 0;">${escapeHtml(job.error)}</p>`;
+      } else {
+        // A lecture split into основная/дополнительная (see
+        // app.reference.writer.generate_reference_documents) produces TWO
+        // outputs on one job — render one row per document instead of
+        // assuming there's always exactly one.
+        const outputs = job.outputs && job.outputs.length ? job.outputs : [
+          { filename: 'реферат.pdf', passed: job.passed, issues: job.issues || [], label: '' },
+        ];
+        container.innerHTML = outputs.map((out, i) => `
+          <div class="row" style="margin-top:${i > 0 ? '0.6rem' : '0'};">
+            ${out.label ? `<span class="source-tag">${escapeHtml(out.label)}:</span>` : ''}
+            <a class="chip" href="/reference/${jobId}/download?index=${i}" target="_blank">${icon('download')}Скачать${out.label ? '' : ' реферат'}</a>
+            ${out.docx_filename ? `<a class="chip" href="/reference/${jobId}/download?index=${i}&format=docx" target="_blank">${icon('download')}Word (.docx)</a>` : ''}
+            <span class="badge ${out.passed}">${out.passed ? 'прошёл проверку' : 'есть замечания'}</span>
+          </div>
+          ${out.issues && out.issues.length ? `<ul class="issues-list">${out.issues.map(i2 => `<li>${escapeHtml(i2)}</li>`).join('')}</ul>` : ''}
+        `).join('');
+      }
+      return job.status;
+    }
+
+    // Fast local poll for snappy feedback while the user is looking at this
+    // exact container. Safe to let it "die" silently if its container gets
+    // replaced by a loadMaterials() re-render mid-flight — referenceJobByMaterial
+    // (or combinedReferenceJobId) is what actually guarantees the result
+    // surfaces eventually, by re-checking on every re-render regardless.
+    function pollReferenceJobFast(jobId, container) {
+      if (referenceJobPollers.has(jobId)) return;
+      referenceJobPollers.add(jobId);
+      const tick = async () => {
+        const status = await refreshReferenceJobInto(jobId, container);
+        if (status === 'processing') setTimeout(tick, 4000);
+        else referenceJobPollers.delete(jobId);
+      };
+      tick();
+    }
+
+    async function loadMaterials() {
+      let materials;
+      try {
+        materials = await (await fetch('/materials')).json();
+      } catch {
+        showToast('Не удалось загрузить список материалов', true);
+        return;
+      }
+      let blocks = [];
+      try {
+        blocks = await (await fetch('/blocks')).json();
+      } catch {}
+      const container = document.getElementById('materials');
+      container.innerHTML = '';
+
+      // Drop selection/job tracking for materials that no longer exist
+      // (e.g. removed on disk between polls), so a stale id can't linger.
+      const currentIds = new Set(materials.map(m => m.id));
+      for (const id of Array.from(selectedMaterialIds)) if (!currentIds.has(id)) selectedMaterialIds.delete(id);
+      for (const id of Array.from(referenceJobByMaterial.keys())) if (!currentIds.has(id)) referenceJobByMaterial.delete(id);
+
+      if (materials.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">${ICONS.inbox}</div>
+            <p>Пока ничего не поступило</p>
+            <p>Добавьте папку Google Диска выше или нажмите «Синхронизировать»</p>
+          </div>`;
+        updateCombinedReferenceBar();
+        return;
+      }
+
+      function createMaterialCard(m) {
+        const div = document.createElement('div');
+        div.className = 'material';
+        const transcriptFiles = m.files.filter(f => f.kind === 'transcript');
+        const filesHtml = m.files.map(f => {
+          const meta = KIND_META[f.kind] || KIND_META.other;
+          const href = `/materials/${encodeURIComponent(m.id)}/files/${encodeURIComponent(f.name)}`;
+          const title = f.source_video ? ` title="${escapeHtml(f.source_video)}"` : '';
+          return `<a class="chip" href="${href}" target="_blank"${title}>${icon(meta.icon)}${meta.label}</a>`;
+        }).join('');
+        const transcriptPreviewButtons = transcriptFiles.map((f, i) => `
+          <button class="small ghost transcript-preview-btn" data-filename="${escapeHtml(f.name)}" style="border:1px solid var(--border); color:var(--text);">
+            ${icon('fileText')}Текст лекции${transcriptFiles.length > 1 ? ` ${i + 1}` : ''}
+          </button>
+        `).join('');
+
+        div.innerHTML = `
+          <div class="material-header">
+            <span class="material-title">
+              <input type="checkbox" class="material-select" data-id="${escapeHtml(m.id)}" ${selectedMaterialIds.has(m.id) ? 'checked' : ''} title="Выбрать для общего реферата">
+              ${escapeHtml(m.title)}
+            </span>
+            <div class="row" style="gap:0.4rem;">
+              ${statusBadge(m.status)}
+              <button class="ghost small delete-material-btn" title="Удалить этот материал">${ICONS.trash}</button>
+            </div>
+          </div>
+          ${m.status === 'processing' ? progressBarHtml(m.stage, m.progress) : ''}
+          <div class="chips">${filesHtml}</div>
+          ${m.error ? `<p style="color:var(--danger); font-size:0.85rem; margin:0 0 0.6rem;">${escapeHtml(m.error)}</p>` : ''}
+          ${transcriptPreviewButtons ? `<div class="row" style="margin-bottom:0.6rem;">${transcriptPreviewButtons}</div>` : ''}
+          <div class="transcript-preview-panel"></div>
+          <div class="lecture-control">
+            <label for="lecture-${m.id}">Лекция №</label>
+            <input type="number" id="lecture-${m.id}" class="lecture-input" min="1" value="${m.lecture_number ?? ''}">
+            <button class="small save-lecture-btn">Сохранить</button>
+            ${m.lecture_number ? `<span class="source-tag">${m.lecture_number_source === 'manual' ? '· вручную' : '· автоопределение'}</span>` : ''}
+            ${transcriptFiles.length > 0
+              ? `<button class="small primary generate-reference-btn" style="margin-left:auto;">${icon('fileText')}Составить реферат</button>`
+              : `<span class="source-tag" style="margin-left:auto;">${m.status === 'processing' ? 'Ждём расшифровку видео…' : 'Реферат недоступен — нет расшифровки видео'}</span>`}
+          </div>
+          <div class="reference-panel"></div>
+        `;
+
+        div.querySelector('.material-select').addEventListener('change', (event) => {
+          if (event.currentTarget.checked) selectedMaterialIds.add(m.id);
+          else selectedMaterialIds.delete(m.id);
+          updateCombinedReferenceBar();
+        });
+
+        div.querySelector('.delete-material-btn').addEventListener('click', async () => {
+          if (!confirm(`Удалить материал «${m.title}»? Файлы на диске будут удалены безвозвратно.`)) return;
+          try {
+            await fetch(`/materials/${encodeURIComponent(m.id)}`, { method: 'DELETE' });
+            selectedMaterialIds.delete(m.id);
+            referenceJobByMaterial.delete(m.id);
+            showToast('Материал удалён');
+            loadMaterials();
+          } catch {
+            showToast('Не удалось удалить материал', true);
+          }
+        });
+
+        const previewPanel = div.querySelector('.transcript-preview-panel');
+        const previewCache = new Map();
+        div.querySelectorAll('.transcript-preview-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const filename = btn.dataset.filename;
+            if (previewPanel.dataset.shown === filename) {
+              previewPanel.innerHTML = '';
+              previewPanel.dataset.shown = '';
+              return;
+            }
+            let text = previewCache.get(filename);
+            if (text === undefined) {
+              previewPanel.innerHTML = `<div class="transcript-preview"><span class="spinner"></span> загрузка…</div>`;
+              try {
+                const href = `/materials/${encodeURIComponent(m.id)}/files/${encodeURIComponent(filename)}`;
+                text = await (await fetch(href)).text();
+                previewCache.set(filename, text);
+              } catch {
+                previewPanel.innerHTML = '';
+                showToast('Не удалось загрузить расшифровку', true);
+                return;
+              }
+            }
+            const excerpt = text.length > 800 ? text.slice(0, 800) + '…' : text;
+            previewPanel.innerHTML = `<div class="transcript-preview">${escapeHtml(excerpt || '(пусто)')}</div>`;
+            previewPanel.dataset.shown = filename;
+          });
+        });
+
+        const referenceRow = div.querySelector('.reference-panel');
+        const existingJobId = referenceJobByMaterial.get(m.id);
+        if (existingJobId) {
+          refreshReferenceJobInto(existingJobId, referenceRow).then((status) => {
+            if (status === 'processing') pollReferenceJobFast(existingJobId, referenceRow);
+          });
+        }
+
+        const lectureInput = div.querySelector('.lecture-input');
+        div.querySelector('.save-lecture-btn').addEventListener('click', async () => {
+          const value = parseInt(lectureInput.value, 10);
+          if (!value) { showToast('Укажите номер лекции', true); return; }
+          try {
+            await fetch(`/materials/${encodeURIComponent(m.id)}/lecture`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lecture_number: value }),
+            });
+            showToast('Номер лекции сохранён');
+            loadMaterials();
+          } catch {
+            showToast('Не удалось сохранить номер лекции', true);
+          }
+        });
+
+        const generateBtn = div.querySelector('.generate-reference-btn');
+        if (generateBtn) {
+          generateBtn.addEventListener('click', async (event) => {
+            const btn = event.currentTarget;
+            btn.disabled = true;
+            referenceRow.innerHTML = `<span class="badge processing"><span class="spinner"></span>запуск…</span>`;
+            try {
+              const res = await fetch(`/materials/${encodeURIComponent(m.id)}/reference`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              });
+              if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                referenceRow.innerHTML = '';
+                showToast(body.detail || 'Не удалось запустить генерацию', true);
+                return;
+              }
+              const { job_id } = await res.json();
+              referenceJobByMaterial.set(m.id, job_id);
+              pollReferenceJobFast(job_id, referenceRow);
+            } finally {
+              btn.disabled = false;
+            }
+          });
+        }
+
+        return div;
+      }
+
+      // Videos not combined yet stay on top as the current work; fixed
+      // blocks follow in order («Блок 1», «Блок 2», …), each foldable.
+      for (const m of materials.filter(m => !m.block_id)) {
+        container.appendChild(createMaterialCard(m));
+      }
+
+      const expandedBlocks = getExpandedBlocks();
+      for (const block of blocks) {
+        const items = materials.filter(m => m.block_id === block.id);
+        if (!items.length) continue;
+        const isOpen = expandedBlocks.has(block.id);
+        const doneCount = items.filter(m => m.status === 'done').length;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'block';
+        wrapper.innerHTML = `
+          <div class="block-header">
+            <button class="block-toggle" aria-expanded="${isOpen}">
+              <span class="block-chevron">${ICONS.chevron}</span>
+              <span class="block-name">Блок ${block.number}</span>
+              <span class="source-tag">${escapeHtml(block.title)} · видео: ${items.length}${doneCount < items.length ? ` · готово ${doneCount}` : ''}</span>
+            </button>
+            <button class="ghost small block-ungroup-btn" title="Разъединить блок — видео останутся в списке">${ICONS.trash}</button>
+          </div>
+          <div class="block-body"></div>
+        `;
+        const body = wrapper.querySelector('.block-body');
+        body.hidden = !isOpen;
+        for (const m of items) body.appendChild(createMaterialCard(m));
+
+        wrapper.querySelector('.block-toggle').addEventListener('click', (event) => {
+          const expanded = body.hidden;
+          body.hidden = !expanded;
+          event.currentTarget.setAttribute('aria-expanded', String(expanded));
+          setBlockExpanded(block.id, expanded);
+        });
+
+        wrapper.querySelector('.block-ungroup-btn').addEventListener('click', async () => {
+          if (!confirm(`Разъединить «Блок ${block.number}»? Видео останутся в списке по отдельности.`)) return;
+          try {
+            const res = await fetch(`/blocks/${encodeURIComponent(block.id)}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('bad status');
+            setBlockExpanded(block.id, false);
+            showToast(`Блок ${block.number} разъединён`);
+          } catch {
+            showToast('Не удалось разъединить блок', true);
+          }
+          loadMaterials();
+        });
+
+        container.appendChild(wrapper);
+      }
+
+      updateCombinedReferenceBar();
+    }
+
+    async function loadGigachatStatus() {
+      const badge = document.getElementById('gigachat-status-badge');
+      const input = document.getElementById('gigachat-key-input');
+      try {
+        const status = await (await fetch('/settings/gigachat')).json();
+        if (status.configured) {
+          badge.className = 'badge ok';
+          badge.textContent = 'подключён';
+          input.placeholder = `Ключ сохранён (${status.masked})`;
+        } else {
+          badge.className = 'badge';
+          badge.textContent = 'не подключён — пишет локальная модель';
+          input.placeholder = 'Ключ авторизации';
+        }
+      } catch {
+        badge.textContent = '';
+      }
+    }
+
+    document.getElementById('gigachat-save-btn').addEventListener('click', async () => {
+      const input = document.getElementById('gigachat-key-input');
+      const key = input.value.trim();
+      if (!key) { showToast('Вставьте ключ авторизации', true); return; }
+      const btn = document.getElementById('gigachat-save-btn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/settings/gigachat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: key }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          showToast(body.detail || 'Ключ не подошёл', true);
+          return;
+        }
+        input.value = '';
+        showToast('Ключ GigaChat сохранён — теперь рефераты пишет GigaChat-Pro');
+        loadGigachatStatus();
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('gigachat-clear-btn').addEventListener('click', async () => {
+      await fetch('/settings/gigachat', { method: 'DELETE' });
+      showToast('Ключ GigaChat удалён — рефераты снова пишет локальная модель');
+      loadGigachatStatus();
+    });
+
+    loadGigachatStatus();
+
+    async function loadTeacherNotes() {
+      try {
+        const { text } = await (await fetch('/settings/teacher-notes')).json();
+        document.getElementById('teacher-notes-input').value = text || '';
+      } catch {}
+    }
+
+    document.getElementById('teacher-notes-save-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('teacher-notes-save-btn');
+      const text = document.getElementById('teacher-notes-input').value;
+      btn.disabled = true;
+      try {
+        await fetch('/settings/teacher-notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        showToast('Указания сохранены');
+      } catch {
+        showToast('Не удалось сохранить указания', true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadTeacherNotes();
+
+    async function loadStudentInfo() {
+      try {
+        const { name, group } = await (await fetch('/settings/student')).json();
+        document.getElementById('student-name-input').value = name || '';
+        document.getElementById('student-group-input').value = group || '';
+      } catch {}
+    }
+
+    document.getElementById('student-info-save-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('student-info-save-btn');
+      const name = document.getElementById('student-name-input').value.trim();
+      const group = document.getElementById('student-group-input').value.trim();
+      btn.disabled = true;
+      try {
+        await fetch('/settings/student', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, group }),
+        });
+        showToast('Данные сохранены');
+      } catch {
+        showToast('Не удалось сохранить данные', true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadStudentInfo();
+
+    document.getElementById('combined-reference-btn').addEventListener('click', async () => {
+      const materialIds = Array.from(selectedMaterialIds);
+      if (materialIds.length < 2) return;
+
+      const btn = document.getElementById('combined-reference-btn');
+      const resultEl = document.getElementById('combined-reference-result');
+      btn.disabled = true;
+      resultEl.innerHTML = `<span class="badge processing"><span class="spinner"></span>запуск…</span>`;
+      try {
+        const res = await fetch('/reference/combined', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ material_ids: materialIds }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          resultEl.innerHTML = '';
+          showToast(body.detail || 'Не удалось запустить генерацию общего реферата', true);
+          return;
+        }
+        const { job_id } = await res.json();
+        combinedReferenceJobId = job_id;
+        pollReferenceJobFast(job_id, resultEl);
+      } finally {
+        updateCombinedReferenceBar();
+      }
+    });
+
+    async function loadDriveLinks() {
+      let links;
+      try {
+        links = await (await fetch('/sources/drive-links')).json();
+      } catch {
+        return;
+      }
+      const container = document.getElementById('drive-links');
+      container.innerHTML = '';
+
+      if (links.length === 0) {
+        container.innerHTML = `<p style="color:var(--text-muted); font-size:0.88rem; margin:0.4rem 0 0;">Ссылок пока нет.</p>`;
+        return;
+      }
+
+      for (const link of links) {
+        const div = document.createElement('div');
+        div.className = 'link-item';
+        div.innerHTML = `
+          <span class="link-icon">${ICONS.link}</span>
+          <div class="link-info">
+            <div class="link-title">${escapeHtml(link.title || 'Папка')} ${statusBadge(link.status)}</div>
+            <div class="link-url">${escapeHtml(link.url)}</div>
+            ${link.error ? `<div style="color:var(--danger); font-size:0.78rem;">${escapeHtml(link.error)}</div>` : ''}
+          </div>
+          <button class="ghost" data-id="${escapeHtml(link.id)}" title="Удалить">${ICONS.trash}</button>
+        `;
+        container.appendChild(div);
+      }
+
+      container.querySelectorAll('button[data-id]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await fetch(`/sources/drive-links/${btn.dataset.id}`, { method: 'DELETE' });
+          loadDriveLinks();
+        });
+      });
+    }
+
+    document.getElementById('add-link-btn').addEventListener('click', async () => {
+      const input = document.getElementById('drive-link-input');
+      const url = input.value.trim();
+      if (!url) return;
+
+      const res = await fetch('/sources/drive-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        showToast(body.detail || 'Не удалось добавить ссылку', true);
+        return;
+      }
+
+      input.value = '';
+      showToast('Папка добавлена, синхронизация запущена');
+      loadDriveLinks();
+      setTimeout(loadMaterials, 3000);
+    });
+
+    document.getElementById('drive-link-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('add-link-btn').click();
+    });
+
+    let syncPolling = false;
+
+    function pollSyncStatus() {
+      if (syncPolling) return;
+      syncPolling = true;
+      const btn = document.getElementById('sync-btn');
+      const progressEl = document.getElementById('sync-progress');
+
+      const tick = async () => {
+        let status;
+        try {
+          status = await (await fetch('/sources/sync/status')).json();
+        } catch {
+          syncPolling = false;
+          btn.disabled = false;
+          progressEl.innerHTML = '';
+          return;
+        }
+
+        if (!status.running) {
+          syncPolling = false;
+          btn.disabled = false;
+          progressEl.innerHTML = '';
+          loadMaterials();
+          loadDriveLinks();
+          return;
+        }
+
+        const stage = status.total
+          ? `Загрузка файлов: ${status.done} из ${status.total}${status.current ? ` — ${status.current}` : ''}`
+          : (status.current || 'Проверка источников…');
+        progressEl.innerHTML = progressBarHtml(stage, status.percent);
+        setTimeout(tick, 1000);
+      };
+      tick();
+    }
+
+    document.getElementById('sync-btn').addEventListener('click', async (event) => {
+      const btn = event.currentTarget;
+      btn.disabled = true;
+      await fetch('/sources/sync', { method: 'POST' });
+      showToast('Синхронизация запущена');
+      pollSyncStatus();
+    });
+
+    // A sync also runs on its own every few minutes in the background (see
+    // SYNC_INTERVAL_SECONDS) — catch that on page load too, not just the
+    // button click, so a page left open shows real progress instead of
+    // nothing happening until it's done.
+    (async () => {
+      try {
+        const status = await (await fetch('/sources/sync/status')).json();
+        if (status.running) {
+          document.getElementById('sync-btn').disabled = true;
+          pollSyncStatus();
+        }
+      } catch {}
+    })();
+
+    document.getElementById('batch-reference-btn').addEventListener('click', async () => {
+      const materials = await (await fetch('/materials')).json();
+      const materialIds = materials.map(m => m.id);
+      if (materialIds.length === 0) { showToast('Пока нет ни одного материала', true); return; }
+
+      await fetch('/reference/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ material_ids: materialIds }),
+      });
+      showToast(`Запущена генерация рефератов (${materialIds.length})`);
+      loadMaterials();
+    });
+
+    document.getElementById('check-btn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('check-file-input');
+      const lectureInput = document.getElementById('check-lecture-input');
+      const resultEl = document.getElementById('check-result');
+      if (!fileInput.files.length) { showToast('Выберите файл', true); return; }
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      const params = new URLSearchParams();
+      if (lectureInput.value) params.set('lecture_number', lectureInput.value);
+
+      resultEl.innerHTML = `<div class="row" style="margin-top:0.8rem;"><span class="badge processing"><span class="spinner"></span>проверяю…</span></div>`;
+      try {
+        const res = await fetch(`/reference/check?${params}`, { method: 'POST', body: formData });
+        const report = await res.json();
+        renderCheckReport(resultEl, report);
+      } catch {
+        resultEl.innerHTML = '';
+        showToast('Не удалось проверить файл', true);
+      }
+    });
+
+    document.getElementById('icon-archive-title').innerHTML = ICONS.archive;
+
+    function lectureLabel(numbers) {
+      if (!numbers.length) return 'текущей лекции';
+      return numbers.length === 1 ? `лекции ${numbers[0]}` : `лекций ${numbers.join(', ')}`;
+    }
+
+    async function withBusyButton(btn, busyText, action) {
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner"></span>${busyText}`;
+      try {
+        return await action();
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    }
+
+    function forgetWorkingListState() {
+      selectedMaterialIds.clear();
+      referenceJobByMaterial.clear();
+      combinedReferenceJobId = null;
+      document.getElementById('combined-reference-result').innerHTML = '';
+    }
+
+    async function loadArchives() {
+      let archives;
+      try {
+        archives = await (await fetch('/archives')).json();
+      } catch {
+        return;
+      }
+      const container = document.getElementById('archives');
+      if (!archives.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">${ICONS.inbox}</div>
+            <p>Архив пока пуст</p>
+            <p>Когда рефераты по лекции готовы, нажмите «Следующая лекция»</p>
+          </div>`;
+        return;
+      }
+      container.innerHTML = '';
+      for (const a of archives) {
+        const div = document.createElement('div');
+        div.className = 'material';
+        const savedAt = new Date(a.created_at * 1000).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' });
+        const materialsHtml = a.materials.map(m => `
+          <div style="margin-bottom:0.5rem;">
+            <div class="source-tag" style="margin-bottom:0.3rem;">${escapeHtml(m.title)}</div>
+            <div class="chips" style="margin-bottom:0;">${m.files.map(f => {
+              const meta = KIND_META[f.kind] || KIND_META.other;
+              const href = `/materials/${encodeURIComponent(m.id)}/files/${encodeURIComponent(f.name)}`;
+              return `<a class="chip" href="${href}" target="_blank" title="${escapeHtml(meta.label)}">${icon(meta.icon)}${escapeHtml(f.name)}</a>`;
+            }).join('')}</div>
+          </div>`).join('');
+        const referencesHtml = a.reference_files.map(name => `
+          <a class="chip" href="/archives/${encodeURIComponent(a.id)}/references/${encodeURIComponent(name)}" target="_blank">${icon('download')}${escapeHtml(name)}</a>`).join('');
+
+        div.innerHTML = `
+          <div class="material-header">
+            <span class="material-title">${escapeHtml(a.title)}</span>
+            <button class="small restore-archive-btn">${icon('undo')}Вернуться к этой лекции</button>
+          </div>
+          <p class="source-tag" style="margin:0 0 0.7rem;">Сохранено ${escapeHtml(savedAt)} · материалов: ${a.materials.length} · папка: archive/${escapeHtml(a.folder_name)}</p>
+          ${materialsHtml}
+          ${referencesHtml ? `<div class="source-tag" style="margin:0.5rem 0 0.3rem;">Рефераты</div><div class="chips">${referencesHtml}</div>` : ''}
+        `;
+
+        div.querySelector('.restore-archive-btn').addEventListener('click', async (event) => {
+          const current = await (await fetch('/materials')).json().catch(() => []);
+          const currentNote = current.length
+            ? `\n\nТекущий список (${lectureLabel([...new Set(current.map(m => m.lecture_number).filter(Boolean))].sort((x, y) => x - y))}, материалов: ${current.length}) сначала сохранится в архив.`
+            : '';
+          if (!confirm(`Вернуться к «${a.title}»?${currentNote}`)) return;
+          await withBusyButton(event.currentTarget, 'Возвращаю…', async () => {
+            try {
+              const res = await fetch(`/archives/${encodeURIComponent(a.id)}/restore`, { method: 'POST' });
+              const body = await res.json().catch(() => ({}));
+              if (!res.ok) { showToast(body.detail || 'Не удалось вернуться к лекции', true); return; }
+              forgetWorkingListState();
+              showToast(body.archived_current
+                ? `«${a.title}» возвращена, «${body.archived_current.title}» сохранена в архив`
+                : `«${a.title}» возвращена в список`);
+            } catch {
+              showToast('Не удалось вернуться к лекции', true);
+            }
+          });
+          loadMaterials();
+          loadArchives();
+        });
+        container.appendChild(div);
+      }
+    }
+
+    document.getElementById('combine-block-btn').addEventListener('click', async () => {
+      const materialIds = [...selectedMaterialIds];
+      if (materialIds.length < 2) { showToast('Отметьте минимум 2 видео', true); return; }
+      try {
+        const res = await fetch('/blocks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ material_ids: materialIds }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) { showToast(body.detail || 'Не удалось объединить в блок', true); return; }
+        selectedMaterialIds.clear();
+        setBlockExpanded(body.id, true);
+        showToast(`Видео объединены: Блок ${body.number} · ${body.title}`);
+      } catch {
+        showToast('Не удалось объединить в блок', true);
+      }
+      loadMaterials();
+    });
+
+    document.getElementById('next-lecture-btn').addEventListener('click', async (event) => {
+      const btn = event.currentTarget;
+      let materials;
+      try {
+        materials = await (await fetch('/materials')).json();
+      } catch {
+        showToast('Не удалось загрузить список материалов', true);
+        return;
+      }
+      if (!materials.length) { showToast('В списке нет материалов — сохранять в архив нечего', true); return; }
+      const numbers = [...new Set(materials.map(m => m.lecture_number).filter(Boolean))].sort((x, y) => x - y);
+      if (!confirm(`Сохранить в архив материалы ${lectureLabel(numbers)} (${materials.length} шт.): видео, расшифровки и готовые рефераты?\n\nСписок очистится для следующей лекции. Вернуться можно из раздела «Архив лекций».`)) return;
+
+      await withBusyButton(btn, 'Сохраняю в архив…', async () => {
+        try {
+          const res = await fetch('/archives', { method: 'POST' });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) { showToast(body.detail || 'Не удалось сохранить в архив', true); return; }
+          forgetWorkingListState();
+          showToast(`«${body.title}» сохранена в архив: archive/${body.folder_name}`);
+        } catch {
+          showToast('Не удалось сохранить в архив', true);
+        }
+      });
+      loadMaterials();
+      loadArchives();
+    });
+
+    loadMaterials();
+    loadDriveLinks();
+    loadArchives();
+    setInterval(loadMaterials, 6000);
+    setInterval(loadDriveLinks, 15000);
+  </script>
+</body>
+</html>
