@@ -2,6 +2,7 @@
 classify them, transcribe videos, and organize everything into named lesson
 folders under MATERIALS_DIR.
 """
+import hashlib
 import logging
 import shutil
 import tempfile
@@ -116,10 +117,67 @@ def _working_material_id(material_id: str) -> str:
     return material_id
 
 
+def file_hash(path: Path) -> str:
+    """sha256 of a file's bytes, read in chunks — a lecture video is far too
+    big to load into memory just to identify it."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _duplicate_of(remote_file: RemoteFile, downloaded: Path | None = None) -> tuple[str | None, str | None]:
+    """(material that already holds this file, its hash if computed).
+
+    Checked twice: once on the filename before downloading anything, and
+    again on the bytes once downloaded. The teacher moving lectures into
+    subfolders gives every file a new Drive id, and without this the same
+    videos would be downloaded and — far worse for a laptop — transcribed
+    all over again."""
+    if downloaded is None:
+        return db.find_ingested_copy(original_name=remote_file.name), None
+    content_hash = file_hash(downloaded)
+    return db.find_ingested_copy(content_hash=content_hash), content_hash
+
+
+def _group_into_block(folder_hint: str) -> None:
+    """The teacher's subfolder is the grouping we were given, so the files
+    from it become one block («Блок N») without anyone clicking anything."""
+    members = [
+        m.id
+        for m in db.list_materials()
+        if m.archive_id is None and m.title.startswith(f"{folder_hint} ")
+    ]
+    if len(members) > 1:
+        db.ensure_block(members, title=folder_hint, source_key=folder_hint)
+
+
 def _ingest_one(source, remote_file: RemoteFile) -> None:
+    known_material, _ = _duplicate_of(remote_file)
+    if known_material is not None:
+        log.info("%s already ingested as part of %s — skipping download", remote_file.name, known_material)
+        db.mark_ingested(
+            source.name, remote_file.remote_id, known_material, original_name=remote_file.name
+        )
+        return
+
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir) / remote_file.name
         source.download(remote_file, tmp_path)
+
+        known_material, content_hash = _duplicate_of(remote_file, tmp_path)
+        if known_material is not None:
+            log.info("%s has the same content as %s — not transcribing it twice", remote_file.name, known_material)
+            db.mark_ingested(
+                source.name,
+                remote_file.remote_id,
+                known_material,
+                content_hash=content_hash,
+                original_name=remote_file.name,
+                size=tmp_path.stat().st_size,
+            )
+            return
 
         extracted_text = "" if Path(remote_file.name).suffix.lower() in _VIDEO_EXTENSIONS else extract_text(tmp_path)
         kind = classify_file(remote_file.name, extracted_text)
@@ -140,8 +198,17 @@ def _ingest_one(source, remote_file: RemoteFile) -> None:
         shutil.move(str(tmp_path), str(material_folder / final_name))
 
         db.update_material(material_id, add_file={"name": final_name, "kind": kind, "original_name": remote_file.name})
-        db.mark_ingested(source.name, remote_file.remote_id, material_id)
+        db.mark_ingested(
+            source.name,
+            remote_file.remote_id,
+            material_id,
+            content_hash=content_hash,
+            original_name=remote_file.name,
+            size=(material_folder / final_name).stat().st_size,
+        )
         _refresh_manifest(material_id)
+        if remote_file.folder_hint:
+            _group_into_block(remote_file.folder_hint)
 
         if kind == KIND_ASSIGNMENT:
             full_text = extract_text(material_folder / final_name, max_pages=None)
@@ -235,6 +302,43 @@ def sync_once() -> int:
         _set_sync_status(running=False, current="")
         _sync_run_lock.release()
     return processed
+
+
+def reset_stale_processing() -> list[str]:
+    """A material left in «обработка» by a container that was stopped
+    mid-transcription: the thread that owned it is gone, so the status is a
+    lie that also blocks the duplicate sweep. Called once at startup."""
+    stale = []
+    for material in db.list_materials():
+        if material.status != "processing":
+            continue
+        transcribed = {f.get("source_video") for f in material.files}
+        pending = [f for f in material.files if f.get("kind") == KIND_VIDEO and f["name"] not in transcribed]
+        db.update_material(material.id, status="done" if not pending else "error",
+                           error=None if not pending else "Транскрибация была прервана — запускается заново")
+        stale.append(material.id)
+    return stale
+
+
+def resume_pending_transcriptions() -> int:
+    """Transcribe the videos that still have no text — after duplicates were
+    removed, so the laptop only ever recognises each lecture once."""
+    started = 0
+    for material in db.list_materials():
+        folder = Path(material.folder_path)
+        transcribed = {f.get("source_video") for f in material.files}
+        for entry in material.files:
+            if entry.get("kind") != KIND_VIDEO or entry["name"] in transcribed:
+                continue
+            video_path = folder / entry["name"]
+            if not video_path.is_file():
+                continue
+            db.update_material(material.id, status="processing", stage="Ожидание очереди…", progress=0)
+            _handle_video(folder, material.id, video_path)
+            started += 1
+    if started:
+        log.info("Resuming %d unfinished transcription(s)", started)
+    return started
 
 
 _stop_event = threading.Event()

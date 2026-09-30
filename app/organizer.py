@@ -29,12 +29,18 @@ def slugify(text: str) -> str:
 
 
 def material_key_for(original_name: str, folder_hint: str | None) -> tuple[str, str]:
-    """Returns (material_id, human title) for the lesson this file belongs to."""
-    if folder_hint:
-        title = folder_hint
-    else:
-        stem = Path(original_name).stem
-        title = f"{time.strftime('%Y-%m-%d')}_{stem}"
+    """Returns (material_id, human title) for this file's own entry.
+
+    Every file gets its own material, even when the teacher keeps a lecture's
+    parts in one subfolder: the parts are then tied together as a block (see
+    db.ensure_block with source_key), which keeps the list foldable while
+    still letting a single part be re-transcribed, renumbered or dropped.
+    `folder_hint` is kept in the title so two files of the same name in
+    different folders stay apart.
+    """
+    stem = Path(original_name).stem.strip()
+    prefix = f"{folder_hint} " if folder_hint else f"{time.strftime('%Y-%m-%d')}_"
+    title = f"{prefix}{stem}"
     return slugify(title), title
 
 

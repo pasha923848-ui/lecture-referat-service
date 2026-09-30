@@ -116,6 +116,16 @@ _conn.executescript(
         filename TEXT NOT NULL,
         PRIMARY KEY (archive_id, filename)
     );
+
+    -- Every реферат the service has written, and which videos went into it,
+    -- so the working list can mark those videos as already used instead of
+    -- letting them be re-selected (and re-paid for) by mistake.
+    CREATE TABLE IF NOT EXISTS generated_references (
+        filename TEXT PRIMARY KEY,
+        material_ids_json TEXT NOT NULL,
+        lecture_numbers_json TEXT NOT NULL,
+        created_at REAL NOT NULL
+    );
     """
 )
 _conn.commit()
@@ -130,6 +140,28 @@ for _column, _ddl in (
     ("progress", "ALTER TABLE materials ADD COLUMN progress REAL"),
     ("archive_id", "ALTER TABLE materials ADD COLUMN archive_id TEXT"),
     ("block_id", "ALTER TABLE materials ADD COLUMN block_id TEXT"),
+    # Set when the person has seen this material in the working list, so a
+    # video the background sync pulled in on its own can be shown as new.
+    ("seen_at", "ALTER TABLE materials ADD COLUMN seen_at REAL"),
+):
+    try:
+        _conn.execute(_ddl)
+        _conn.commit()
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
+for _ddl in (
+    # Identity of the bytes behind an ingested file: the same lecture
+    # re-uploaded (or moved into a subfolder) gets a brand-new Drive id, so
+    # the (source, remote_id) key alone cannot recognise it — the hash and
+    # the original filename can.
+    "ALTER TABLE ingested_files ADD COLUMN content_hash TEXT",
+    "ALTER TABLE ingested_files ADD COLUMN original_name TEXT",
+    "ALTER TABLE ingested_files ADD COLUMN size INTEGER",
+    # The remote subfolder a block was built from ("01_Лекция OSI _TCP"),
+    # so a later sync of the same folder extends that block instead of
+    # starting a new one.
+    "ALTER TABLE material_blocks ADD COLUMN source_key TEXT",
 ):
     try:
         _conn.execute(_ddl)
@@ -139,6 +171,8 @@ for _column, _ddl in (
 
 _conn.execute("CREATE INDEX IF NOT EXISTS idx_materials_archive ON materials(archive_id)")
 _conn.execute("CREATE INDEX IF NOT EXISTS idx_materials_block ON materials(block_id)")
+_conn.execute("CREATE INDEX IF NOT EXISTS idx_ingested_hash ON ingested_files(content_hash)")
+_conn.execute("CREATE INDEX IF NOT EXISTS idx_ingested_name ON ingested_files(original_name)")
 _conn.commit()
 
 for _ddl in (
@@ -264,6 +298,7 @@ class Material:
     updated_at: float = 0.0
     archive_id: Optional[str] = None  # set while the material's lecture is archived
     block_id: Optional[str] = None  # set once the video was combined into a block
+    seen_at: Optional[float] = None  # None while the material is still marked «новое»
 
 
 def _row_to_material(row: sqlite3.Row) -> Material:
@@ -282,6 +317,7 @@ def _row_to_material(row: sqlite3.Row) -> Material:
         updated_at=row["updated_at"],
         archive_id=row["archive_id"],
         block_id=row["block_id"],
+        seen_at=row["seen_at"],
     )
 
 
@@ -294,12 +330,63 @@ def is_ingested(source: str, remote_id: str) -> bool:
         return cur.fetchone() is not None
 
 
-def mark_ingested(source: str, remote_id: str, material_id: str) -> None:
+def mark_ingested(
+    source: str,
+    remote_id: str,
+    material_id: str,
+    content_hash: Optional[str] = None,
+    original_name: Optional[str] = None,
+    size: Optional[int] = None,
+) -> None:
     with _lock:
         _conn.execute(
-            "INSERT OR REPLACE INTO ingested_files (source, remote_id, material_id, ingested_at) "
-            "VALUES (?, ?, ?, ?)",
-            (source, remote_id, material_id, time.time()),
+            "INSERT OR REPLACE INTO ingested_files "
+            "(source, remote_id, material_id, ingested_at, content_hash, original_name, size) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (source, remote_id, material_id, time.time(), content_hash, original_name, size),
+        )
+        _conn.commit()
+
+
+def find_ingested_copy(
+    content_hash: Optional[str] = None, original_name: Optional[str] = None
+) -> Optional[str]:
+    """The material that already holds this exact file, if any — matched by
+    content hash first, then by the original filename. Lets the pipeline
+    recognise a lecture the teacher re-uploaded or moved into a subfolder
+    (new remote id, same bytes) instead of downloading and transcribing it
+    a second time. Only materials that still exist count."""
+    with _lock:
+        for column, value in (("content_hash", content_hash), ("original_name", original_name)):
+            if not value:
+                continue
+            rows = _conn.execute(
+                f"SELECT i.material_id FROM ingested_files i "
+                f"JOIN materials m ON m.id = i.material_id WHERE i.{column} = ? ORDER BY i.ingested_at",
+                (value,),
+            ).fetchall()
+            if rows:
+                return rows[0]["material_id"]
+        return None
+
+
+def ingested_hashes_for(material_id: str) -> set[str]:
+    with _lock:
+        rows = _conn.execute(
+            "SELECT content_hash FROM ingested_files WHERE material_id = ? AND content_hash IS NOT NULL",
+            (material_id,),
+        ).fetchall()
+        return {row["content_hash"] for row in rows}
+
+
+def repoint_ingested(from_material_id: str, to_material_id: str) -> None:
+    """After a duplicate material is removed, its remote files must stay
+    marked as ingested — pointing at the copy that was kept, so the next
+    sync does not download them again."""
+    with _lock:
+        _conn.execute(
+            "UPDATE ingested_files SET material_id = ? WHERE material_id = ?",
+            (to_material_id, from_material_id),
         )
         _conn.commit()
 
@@ -322,6 +409,7 @@ def update_material(
     status: Optional[str] = None,
     error: Optional[str] = None,
     add_file: Optional[dict] = None,
+    remove_files: Optional[list[str]] = None,
     lecture_number: Optional[int] = None,
     lecture_number_source: Optional[str] = None,
     stage: Optional[str] = None,
@@ -345,6 +433,8 @@ def update_material(
             material.error = error
         if add_file is not None:
             material.files.append(add_file)
+        if remove_files:
+            material.files = [f for f in material.files if f.get("name") not in set(remove_files)]
         if lecture_number is not None:
             material.lecture_number = lecture_number
         if lecture_number_source is not None:
@@ -406,6 +496,48 @@ def list_materials(archive_id: Optional[str] = None) -> list[Material]:
         return [_row_to_material(row) for row in rows]
 
 
+def mark_materials_seen(material_ids: list[str]) -> None:
+    """Clears the «новое» badge: called when the working list is opened, so
+    what the background sync pulls in afterwards stands out on its own."""
+    if not material_ids:
+        return
+    with _lock:
+        placeholders = ",".join("?" for _ in material_ids)
+        _conn.execute(
+            f"UPDATE materials SET seen_at = ? WHERE id IN ({placeholders}) AND seen_at IS NULL",
+            [time.time(), *material_ids],
+        )
+        _conn.commit()
+
+
+def record_reference(filename: str, material_ids: list[str], lecture_numbers: list[int]) -> None:
+    with _lock:
+        _conn.execute(
+            "INSERT OR REPLACE INTO generated_references "
+            "(filename, material_ids_json, lecture_numbers_json, created_at) VALUES (?, ?, ?, ?)",
+            (
+                filename,
+                json.dumps(sorted(set(material_ids)), ensure_ascii=False),
+                json.dumps(sorted(set(lecture_numbers)), ensure_ascii=False),
+                time.time(),
+            ),
+        )
+        _conn.commit()
+
+
+def references_by_material() -> dict[str, list[str]]:
+    """material id -> рефераты already written from it."""
+    result: dict[str, list[str]] = {}
+    with _lock:
+        rows = _conn.execute(
+            "SELECT filename, material_ids_json FROM generated_references ORDER BY created_at"
+        ).fetchall()
+    for row in rows:
+        for material_id in json.loads(row["material_ids_json"]):
+            result.setdefault(material_id, []).append(row["filename"])
+    return result
+
+
 @dataclass
 class MaterialBlock:
     id: str
@@ -447,11 +579,15 @@ def _block_from_row(row: sqlite3.Row, archive_id: Optional[str]) -> Optional[Mat
     )
 
 
-def ensure_block(material_ids: list[str], title: Optional[str] = None) -> Optional[MaterialBlock]:
+def ensure_block(
+    material_ids: list[str], title: Optional[str] = None, source_key: Optional[str] = None
+) -> Optional[MaterialBlock]:
     """Fixes these materials as one block. Materials that already belong to
     a block keep the earliest of those blocks and the others are merged
     into it, so combining overlapping selections never leaves half-blocks
-    behind. Returns None when none of the ids exist."""
+    behind. `source_key` names the remote subfolder the block came from, so
+    the next sync of that folder extends the same block. Returns None when
+    none of the ids exist."""
     with _lock:
         placeholders = ",".join("?" for _ in material_ids)
         rows = _conn.execute(
@@ -460,6 +596,12 @@ def ensure_block(material_ids: list[str], title: Optional[str] = None) -> Option
         if not rows:
             return None
         existing_ids = [r["block_id"] for r in rows if r["block_id"]]
+        if source_key:
+            same_folder = _conn.execute(
+                "SELECT id FROM material_blocks WHERE source_key = ?", (source_key,)
+            ).fetchone()
+            if same_folder:
+                existing_ids.append(same_folder["id"])
         if existing_ids:
             kept = _conn.execute(
                 f"SELECT id FROM material_blocks WHERE id IN ({','.join('?' for _ in existing_ids)}) "
@@ -473,11 +615,16 @@ def ensure_block(material_ids: list[str], title: Optional[str] = None) -> Option
             block_id = uuid.uuid4().hex
             number = _conn.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM material_blocks").fetchone()[0]
             _conn.execute(
-                "INSERT INTO material_blocks (id, number, title, created_at) VALUES (?, ?, ?, ?)",
-                (block_id, number, title or "Блок", time.time()),
+                "INSERT INTO material_blocks (id, number, title, created_at, source_key) VALUES (?, ?, ?, ?, ?)",
+                (block_id, number, title or "Блок", time.time(), source_key),
             )
         else:
             block_id = kept["id"]
+            if source_key:
+                _conn.execute(
+                    "UPDATE material_blocks SET source_key = ? WHERE id = ? AND source_key IS NULL",
+                    (source_key, block_id),
+                )
 
         ids = [r["id"] for r in rows]
         merged = [b for b in set(existing_ids) if b != block_id]
@@ -500,10 +647,15 @@ def ensure_block(material_ids: list[str], title: Optional[str] = None) -> Option
             ).fetchall()
             if r["lecture_number"] is not None
         ]
-        _conn.execute(
-            "UPDATE material_blocks SET title = ? WHERE id = ?",
-            (title or _block_title_for(sorted(numbers)), block_id),
-        )
+        if title:
+            _conn.execute("UPDATE material_blocks SET title = ? WHERE id = ?", (title, block_id))
+        else:
+            # A block named after the teacher's folder keeps that name; an
+            # unnamed one is titled by the lecture numbers it now holds.
+            _conn.execute(
+                "UPDATE material_blocks SET title = ? WHERE id = ? AND source_key IS NULL",
+                (_block_title_for(sorted(numbers)), block_id),
+            )
         _conn.commit()
         row = _conn.execute("SELECT * FROM material_blocks WHERE id = ?", (block_id,)).fetchone()
         return _block_from_row(row, None)

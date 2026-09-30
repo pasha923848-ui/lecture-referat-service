@@ -138,6 +138,7 @@
   .badge.processing { background: var(--warning-soft); color: var(--warning); }
   .badge.done, .badge.ok, .badge.true { background: var(--success-soft); color: var(--success); }
   .badge.error, .badge.false { background: var(--danger-soft); color: var(--danger); }
+  .badge.new { background: var(--accent-soft, #e7efff); color: var(--accent); }
   .badge .spinner { width: 10px; height: 10px; }
 
   .spinner {
@@ -307,6 +308,8 @@
         <h2 class="card-title"><span class="icon" id="icon-folder"></span>Материалы</h2>
         <div class="row">
           <button class="small" id="sync-btn"><span class="icon" id="icon-refresh"></span>Синхронизировать</button>
+          <button class="small" id="dedupe-btn" title="Удалить видео, скачанные повторно (преподаватель переложил файл — Google Диск выдал ему новый id)">Убрать дубликаты</button>
+          <button class="small" id="seen-btn" title="Снять пометки «новое»">Отметить просмотренными</button>
           <button class="small" id="batch-reference-btn"><span class="icon" id="icon-stack"></span>Рефераты по всем пропущенным</button>
           <button class="small primary" id="next-lecture-btn" title="Сохранить видео, расшифровки и рефераты текущей лекции в архив и очистить список"><span class="icon" id="icon-archive"></span>Следующая лекция</button>
         </div>
@@ -614,6 +617,8 @@
               ${escapeHtml(m.title)}
             </span>
             <div class="row" style="gap:0.4rem;">
+              ${m.is_new ? `<span class="badge new" title="Подгрузилось автоматически, вы это ещё не открывали">новое</span>` : ''}
+              ${m.has_reference ? `<span class="badge done" title="${escapeHtml(m.reference_files.join(', '))}">реферат готов</span>` : ''}
               ${statusBadge(m.status)}
               <button class="ghost small delete-material-btn" title="Удалить этот материал">${ICONS.trash}</button>
             </div>
@@ -1037,6 +1042,27 @@
       await fetch('/sources/sync', { method: 'POST' });
       showToast('Синхронизация запущена');
       pollSyncStatus();
+    });
+
+    document.getElementById('dedupe-btn').addEventListener('click', async (event) => {
+      const btn = event.currentTarget;
+      btn.disabled = true;
+      try {
+        const report = await (await fetch('/materials/dedupe', { method: 'POST' })).json();
+        const removed = (report.removed_files || []).length;
+        if (removed === 0) showToast('Дубликатов не найдено');
+        else showToast(`Убрано дубликатов: ${removed} (${Math.round((report.freed_bytes || 0) / 1048576)} МБ)`);
+        loadMaterials();
+      } catch {
+        showToast('Не удалось проверить дубликаты', true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('seen-btn').addEventListener('click', async () => {
+      await fetch('/materials/seen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      loadMaterials();
     });
 
     // A sync also runs on its own every few minutes in the background (see

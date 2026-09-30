@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from app import db
 from app import jobs as core_jobs
 
 _lock = threading.Lock()
@@ -86,6 +87,21 @@ def _set_outputs(job: "ReferenceJob", results: list) -> None:
     job.details = first.details
 
 
+def _record_references(job: "ReferenceJob") -> None:
+    """Remember which videos this реферат was written from, so the working
+    list can mark them «реферат готов» and nobody pays for the same lecture
+    twice. Every video of the same lecture counts, not just the one that was
+    clicked — the реферат is written from all of them."""
+    ids = {i for i in [job.material_id, *(job.material_ids or [])] if i}
+    materials = [db.get_material(i) for i in ids]
+    numbers = {m.lecture_number for m in materials if m is not None and m.lecture_number is not None}
+    if numbers:
+        ids |= {m.id for m in db.list_materials() if m.lecture_number in numbers}
+    for output in job.outputs:
+        db.record_reference(output.filename, sorted(ids), sorted(numbers))
+    db.mark_materials_seen(sorted(ids))
+
+
 def start_generation(material_id: str, question_count: Optional[int] = None) -> str:
     job_id = uuid.uuid4().hex
     job = ReferenceJob(id=job_id, material_id=material_id)
@@ -105,6 +121,7 @@ def start_generation(material_id: str, question_count: Optional[int] = None) -> 
             with _lock:
                 job.status = "done"
                 _set_outputs(job, results)
+            _record_references(job)
         except ReferenceError as exc:
             with _lock:
                 job.status = "error"
@@ -141,6 +158,7 @@ def start_combined_generation(material_ids: list[str], question_count: Optional[
             with _lock:
                 job.status = "done"
                 _set_outputs(job, [(path, report)])
+            _record_references(job)
         except ReferenceError as exc:
             with _lock:
                 job.status = "error"

@@ -6,10 +6,15 @@ def test_slugify_replaces_spaces_and_strips_unsafe_chars():
     assert slugify("Занятие 5: Матанализ?!") == "Занятие_5_Матанализ"
 
 
-def test_material_key_uses_folder_hint_when_present():
-    material_id, title = material_key_for("lecture.webm", "Занятие 5 - Матанализ")
-    assert title == "Занятие 5 - Матанализ"
-    assert material_id == slugify(title)
+def test_material_key_keeps_each_file_apart_but_remembers_its_folder():
+    # Files of one folder are grouped as a block, not merged into a single
+    # material, so every part stays individually re-transcribable.
+    first, first_title = material_key_for("lecture 1.webm", "Занятие 5 - Матанализ")
+    second, second_title = material_key_for("lecture 2.webm", "Занятие 5 - Матанализ")
+    assert first != second
+    assert first_title.startswith("Занятие 5 - Матанализ ")
+    assert second_title.endswith("lecture 2")
+    assert first == slugify(first_title)
 
 
 def test_material_key_falls_back_to_filename_and_date_without_hint():

@@ -1,3 +1,4 @@
+import logging
 import shutil
 import uuid
 from contextlib import asynccontextmanager
@@ -12,7 +13,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from app import archive as lecture_archive
-from app import config, db, jobs, pipeline
+from app import config, db, dedupe, jobs, pipeline
 from app.reference import gigachat
 from app.reference import jobs as reference_jobs
 from app.reference.checker import check_reference
@@ -22,9 +23,20 @@ from app.storage import new_job_id, save_upload_streaming
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
+log = logging.getLogger("main")
+
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
+    # Nothing is transcribing yet at startup, so this is the cheapest moment
+    # to throw away videos an earlier run downloaded twice — and only then
+    # pick up the recognitions that the previous run did not finish.
+    try:
+        pipeline.reset_stale_processing()
+        dedupe.dedupe_if_idle()
+        pipeline.resume_pending_transcriptions()
+    except Exception:  # pragma: no cover - never block startup on cleanup
+        log.exception("Startup cleanup failed")
     pipeline.start_background_sync()
     yield
 
@@ -50,8 +62,45 @@ async def health():
 
 @app.get("/materials")
 async def list_materials():
-    """List all organized lesson folders, most recent first."""
-    return [asdict(m) for m in db.list_materials()]
+    """List all organized lesson folders, most recent first.
+
+    Each entry also says whether a реферат was already written from it and
+    whether it appeared since the list was last opened, so an automatically
+    pulled lecture is visible as new and a finished one is not re-processed
+    by mistake."""
+    materials = db.list_materials()
+    references = db.references_by_material()
+    payload = []
+    for material in materials:
+        item = asdict(material)
+        item["reference_files"] = references.get(material.id, [])
+        item["has_reference"] = bool(item["reference_files"])
+        item["is_new"] = material.seen_at is None
+        payload.append(item)
+    return payload
+
+
+class SeenRequest(BaseModel):
+    material_ids: Optional[list[str]] = None
+
+
+@app.post("/materials/seen")
+async def mark_materials_seen(payload: SeenRequest = SeenRequest()):
+    """Clear the «новое» marks. Called when the person acknowledges the
+    newly pulled videos — the list itself is polled every few seconds, so
+    marking them seen on every GET would hide them before they are read."""
+    ids = payload.material_ids or [m.id for m in db.list_materials()]
+    db.mark_materials_seen(ids)
+    return {"seen": len(ids)}
+
+
+@app.post("/materials/dedupe")
+async def dedupe_materials():
+    """Remove videos that were downloaded more than once (the teacher moving
+    a lecture into a subfolder gives it a new Drive id) — before they cost
+    another hour of transcription."""
+    report = dedupe.dedupe_if_idle()
+    return asdict(report)
 
 
 @app.get("/materials/{material_id}")
