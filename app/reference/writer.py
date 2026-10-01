@@ -1136,12 +1136,24 @@ def build_short_disclosure() -> str:
     )
 
 
-def _sources(lecture_numbers: list[int], materials: list[db.Material]) -> list[str]:
+def _sources(
+    lecture_numbers: list[int],
+    materials: list[db.Material],
+    analyses: list[LectureAnalysis] = (),
+    engine_calls: int = 0,
+    split: bool = False,
+    font_size: int = 12,
+    notes: list[str] = (),
+) -> list[str]:
     city, year = _city_and_year()
     sources = _video_sources(materials) or [
         f"Видеолекция №{n} курса «{config.REFERENCE_DISCIPLINE}», {year or city}." for n in lecture_numbers
     ]
-    sources.append(build_short_disclosure())
+    try:
+        sources.append(build_disclosure(list(analyses), engine_calls, split, font_size, list(notes)))
+    except Exception:  # pragma: no cover - the service must still be named
+        log.exception("Full disclosure could not be built — falling back to the short one")
+        sources.append(build_short_disclosure())
     return sources
 
 
@@ -1212,7 +1224,9 @@ def _write_reference_document(
         content = ReferenceContent(
             title_page=title_info,
             sections=[(f"{n} {s.question}", s.answer) for n, s in enumerate(ordered, start=1)],
-            sources=_sources([lecture.lecture_number], materials),
+            sources=_sources(
+                [lecture.lecture_number], materials, [analysis], generate_fn.calls, split, rules.font_size, [notes]
+            ),
         )
         answered = LectureQuestions(
             lecture_number=lecture.lecture_number, topic=lecture.topic, questions=[s.question for s in ordered]
@@ -1581,7 +1595,10 @@ def generate_combined_reference(
     content = ReferenceContent(
         title_page=title_info,
         sections=sections,
-        sources=_sources(lecture_numbers, materials),
+        sources=_sources(
+            lecture_numbers, materials, analyses, counter.calls, False, rules.font_size,
+            [_combined_notes(lecture_by_number[n].notes) for n in lecture_numbers],
+        ),
     )
     combined_lecture = LectureQuestions(
         lecture_number="-".join(str(n) for n in lecture_numbers),  # type: ignore[arg-type]
