@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from app import archive as lecture_archive
-from app import config, db, dedupe, jobs, pipeline
+from app import config, db, dedupe, jobs, pipeline, regroup
 from app.reference import gigachat
 from app.reference import jobs as reference_jobs
 from app.reference.checker import check_reference
@@ -34,6 +34,7 @@ async def _lifespan(app: FastAPI):
     try:
         pipeline.reset_stale_processing()
         dedupe.dedupe_if_idle()
+        regroup.split_multi_video_materials()
         pipeline.resume_pending_transcriptions()
     except Exception:  # pragma: no cover - never block startup on cleanup
         log.exception("Startup cleanup failed")
@@ -101,6 +102,14 @@ async def dedupe_materials():
     another hour of transcription."""
     report = dedupe.dedupe_if_idle()
     return asdict(report)
+
+
+@app.post("/materials/split")
+async def split_materials():
+    """Break materials that still hold several videos into one entry per
+    video and fix those entries as one block (numbered after the blocks that
+    already exist)."""
+    return {"materials": regroup.split_multi_video_materials()}
 
 
 @app.get("/materials/{material_id}")

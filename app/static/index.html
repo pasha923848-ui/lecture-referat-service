@@ -309,6 +309,7 @@
         <div class="row">
           <button class="small" id="sync-btn"><span class="icon" id="icon-refresh"></span>Синхронизировать</button>
           <button class="small" id="dedupe-btn" title="Удалить видео, скачанные повторно (преподаватель переложил файл — Google Диск выдал ему новый id)">Убрать дубликаты</button>
+          <button class="small" id="split-btn" title="Разбить материалы с несколькими видео на отдельные записи и собрать их в один блок">Разбить на видео</button>
           <button class="small" id="seen-btn" title="Снять пометки «новое»">Отметить просмотренными</button>
           <button class="small" id="batch-reference-btn"><span class="icon" id="icon-stack"></span>Рефераты по всем пропущенным</button>
           <button class="small primary" id="next-lecture-btn" title="Сохранить видео, расшифровки и рефераты текущей лекции в архив и очистить список"><span class="icon" id="icon-archive"></span>Следующая лекция</button>
@@ -1055,6 +1056,21 @@
         loadMaterials();
       } catch {
         showToast('Не удалось проверить дубликаты', true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('split-btn').addEventListener('click', async (event) => {
+      const btn = event.currentTarget;
+      btn.disabled = true;
+      try {
+        const result = await (await fetch('/materials/split', { method: 'POST' })).json();
+        const count = (result.materials || []).length;
+        showToast(count ? `Разбито на ${count} видео и собрано в блок` : 'Разбивать нечего — у каждого видео своя запись');
+        loadMaterials();
+      } catch {
+        showToast('Не удалось разбить материалы', true);
       } finally {
         btn.disabled = false;
       }

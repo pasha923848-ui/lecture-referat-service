@@ -65,6 +65,32 @@ def test_different_videos_are_left_alone(tmp_path):
     assert len(db.list_materials()) == 2
 
 
+def test_a_folder_left_behind_by_a_removed_material_is_cleaned_up(tmp_path, monkeypatch):
+    from app import config
+
+    monkeypatch.setattr(config, "MATERIALS_DIR", tmp_path)
+    _material(tmp_path, "живой", b"lecture")
+    orphan = tmp_path / "удалённый"
+    orphan.mkdir()
+    (orphan / "manifest.json").write_text("{}", encoding="utf-8")
+
+    assert dedupe.remove_orphan_folders() == ["удалённый"]
+    assert not orphan.exists()
+    assert (tmp_path / "живой").is_dir()
+
+
+def test_a_stray_folder_with_real_files_is_never_deleted(tmp_path, monkeypatch):
+    from app import config
+
+    monkeypatch.setattr(config, "MATERIALS_DIR", tmp_path)
+    stray = tmp_path / "чужая_папка"
+    stray.mkdir()
+    (stray / "video.webm").write_bytes(b"something")
+
+    assert dedupe.remove_orphan_folders() == []
+    assert (stray / "video.webm").is_file()
+
+
 def test_nothing_is_touched_while_a_video_is_being_transcribed(tmp_path):
     _material(tmp_path, "первая", b"same lecture", transcript=True)
     _material(tmp_path, "вторая", b"same lecture", status="processing")

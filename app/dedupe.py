@@ -8,6 +8,7 @@ a subfolder: Google Drive hands the file a brand-new id, and the pipeline's
 bytes can: two files with the same sha256 are the same lecture.
 """
 import logging
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -105,6 +106,29 @@ def _remove_copy(material: db.Material, entry: dict, keeper: db.Material, report
         report.removed_materials.append(material.id)
 
 
+def remove_orphan_folders() -> list[str]:
+    """Folders of materials that no longer exist. A removed duplicate leaves
+    its manifest.json behind, which is enough to keep the folder on disk and
+    make the materials directory look fuller than it is."""
+    from app.config import MATERIALS_DIR
+
+    if not MATERIALS_DIR.is_dir():
+        return []
+    known = {Path(m.folder_path).resolve() for m in db.list_materials()}
+    known |= {Path(m.folder_path).resolve() for a in db.list_archives() for m in db.list_materials(a.id)}
+    removed = []
+    for folder in MATERIALS_DIR.iterdir():
+        if not folder.is_dir() or folder.resolve() in known:
+            continue
+        leftovers = [p.name for p in folder.iterdir()]
+        if leftovers and leftovers != ["manifest.json"]:
+            log.warning("Leaving %s alone — it still holds %s", folder.name, leftovers)
+            continue
+        shutil.rmtree(folder, ignore_errors=True)
+        removed.append(folder.name)
+    return removed
+
+
 def dedupe_if_idle() -> DedupeReport:
     """Safe entry point for the web UI and for startup: does nothing while a
     video is being transcribed, so a file is never pulled out from under a
@@ -112,4 +136,6 @@ def dedupe_if_idle() -> DedupeReport:
     if any(m.status == "processing" for m in db.list_materials()):
         log.info("Skipping dedupe — something is still transcribing")
         return DedupeReport()
-    return dedupe_materials()
+    report = dedupe_materials()
+    report.removed_materials += remove_orphan_folders()
+    return report

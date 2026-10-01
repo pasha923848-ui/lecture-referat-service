@@ -379,6 +379,17 @@ def ingested_hashes_for(material_id: str) -> set[str]:
         return {row["content_hash"] for row in rows}
 
 
+def repoint_ingested_file(original_name: str, material_id: str) -> None:
+    """One remote file now lives in a different material (a multi-video
+    material was split into one entry per video)."""
+    with _lock:
+        _conn.execute(
+            "UPDATE ingested_files SET material_id = ? WHERE original_name = ?",
+            (material_id, original_name),
+        )
+        _conn.commit()
+
+
 def repoint_ingested(from_material_id: str, to_material_id: str) -> None:
     """After a duplicate material is removed, its remote files must stay
     marked as ingested — pointing at the copy that was kept, so the next
@@ -429,6 +440,11 @@ def update_material(
             if status != "processing":
                 material.stage = None
                 material.progress = None
+            # A material that finished has nothing left to complain about —
+            # otherwise the message from an interrupted earlier run ("…была
+            # прервана") stays on the card forever.
+            if status == "done":
+                material.error = None
         if error is not None:
             material.error = error
         if add_file is not None:
