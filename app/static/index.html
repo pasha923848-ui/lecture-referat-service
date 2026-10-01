@@ -203,6 +203,8 @@
   .block-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; }
   .block-chevron { display: inline-flex; color: var(--text-muted); transition: transform 0.15s ease; }
   .block-toggle[aria-expanded="true"] .block-chevron { transform: rotate(90deg); }
+  .block-reference-btn { white-space: nowrap; flex-shrink: 0; }
+  .block-reference-panel:not(:empty) { padding: 0 0.7rem 0.7rem; }
   .block-body { padding: 0 0.7rem 0.1rem; }
   .block-body .material:last-child { margin-bottom: 0.7rem; }
 
@@ -506,6 +508,7 @@
     // visible panel would reset to empty even though the реферат finished
     // successfully on the server.
     const referenceJobByMaterial = new Map();
+    const referenceJobByBlock = new Map();
     let combinedReferenceJobId = null;
 
     // One-shot: fetch a job's current status and render it into `container`
@@ -583,6 +586,8 @@
       const currentIds = new Set(materials.map(m => m.id));
       for (const id of Array.from(selectedMaterialIds)) if (!currentIds.has(id)) selectedMaterialIds.delete(id);
       for (const id of Array.from(referenceJobByMaterial.keys())) if (!currentIds.has(id)) referenceJobByMaterial.delete(id);
+      const currentBlockIds = new Set(blocks.map(b => b.id));
+      for (const id of Array.from(referenceJobByBlock.keys())) if (!currentBlockIds.has(id)) referenceJobByBlock.delete(id);
 
       if (materials.length === 0) {
         container.innerHTML = `
@@ -765,8 +770,10 @@
               <span class="block-name">Блок ${block.number}</span>
               <span class="source-tag">${escapeHtml(block.title)} · видео: ${items.length}${doneCount < items.length ? ` · готово ${doneCount}` : ''}</span>
             </button>
+            <button class="small primary block-reference-btn" title="Написать один реферат по всем видео этого блока">${icon('fileText')}Составить реферат по блоку</button>
             <button class="ghost small block-ungroup-btn" title="Разъединить блок — видео останутся в списке">${ICONS.trash}</button>
           </div>
+          <div class="block-reference-panel"></div>
           <div class="block-body"></div>
         `;
         const body = wrapper.querySelector('.block-body');
@@ -778,6 +785,50 @@
           body.hidden = !expanded;
           event.currentTarget.setAttribute('aria-expanded', String(expanded));
           setBlockExpanded(block.id, expanded);
+        });
+
+        // One реферат over the whole block — the usual case, since a block
+        // is exactly «все видео одной лекции».
+        const blockPanel = wrapper.querySelector('.block-reference-panel');
+        const runningBlockJob = referenceJobByBlock.get(block.id);
+        if (runningBlockJob) {
+          refreshReferenceJobInto(runningBlockJob, blockPanel).then((status) => {
+            if (status === 'processing') pollReferenceJobFast(runningBlockJob, blockPanel);
+          });
+        }
+
+        const blockReferenceBtn = wrapper.querySelector('.block-reference-btn');
+        const readyItems = items.filter(m => m.files.some(f => f.kind === 'transcript'));
+        if (!readyItems.length) {
+          blockReferenceBtn.disabled = true;
+          blockReferenceBtn.title = 'Нет ни одной расшифровки — дождитесь распознавания видео';
+        }
+        blockReferenceBtn.addEventListener('click', async () => {
+          blockReferenceBtn.disabled = true;
+          blockPanel.innerHTML = `<span class="badge processing"><span class="spinner"></span>запуск…</span>`;
+          const ids = readyItems.map(m => m.id);
+          const single = ids.length === 1;
+          const request = single
+            ? fetch(`/materials/${encodeURIComponent(ids[0])}/reference`, { method: 'POST' })
+            : fetch('/reference/combined', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ material_ids: ids }),
+              });
+          try {
+            const res = await request;
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              blockPanel.innerHTML = '';
+              showToast(body.detail || 'Не удалось запустить генерацию реферата', true);
+              return;
+            }
+            const { job_id } = await res.json();
+            referenceJobByBlock.set(block.id, job_id);
+            pollReferenceJobFast(job_id, blockPanel);
+          } finally {
+            blockReferenceBtn.disabled = false;
+          }
         });
 
         wrapper.querySelector('.block-ungroup-btn').addEventListener('click', async () => {
